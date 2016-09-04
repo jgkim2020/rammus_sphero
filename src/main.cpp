@@ -20,6 +20,7 @@
 #include "MPU6050.h"
 
 Serial pc_serial(USBTX,USBRX);
+Serial pc(SERIAL_TX, SERIAL_RX); // PA_2, PA_3
 Serial_Receive blt(PC_12, PD_2);
 
 Ticker timer_int;
@@ -35,12 +36,14 @@ MPU6050 sensor;
 
 float velocity_L = 0.0;
 float velocity_R = 0.0;
-float velocity_L_past = 0.0;
-float velocity_R_past = 0.0;
-float velocity_L_tim = 0.0;
-float velocity_R_tim = 0.0;
-float velocity_L_past_tim = 0.0;
-float velocity_R_past_tim = 0.0;
+float velocity_L_temp = 0.0;
+float velocity_R_temp = 0.0;
+float velocity_L_set = 0.0;
+float velocity_R_set = 0.0;
+float velocity_L_delta = 0.0;
+float velocity_R_delta = 0.0;
+float velocity_L_now = 0.0;
+float velocity_R_now = 0.0;
 
 int main_delay = 100;
 
@@ -48,41 +51,53 @@ float target_velocity = 0.0f;
 
 bool newcommand = false;
 int tick = 0;
+int debug_cnt = 0;
 
 void initialize(void);
 void motor_control(float velocity, int motor_num);
+
+void timer_int_handler(void)
+{
+  pc_serial.printf("%d\n", debug_cnt);
+  debug_cnt++;
+  if(newcommand == true){
+    tick = 200;
+    newcommand = false;
+  }
+  else if((newcommand == false) && (tick > 0)) {
+    tick--;
+    velocity_L_now += velocity_L_delta/200.0;
+    velocity_R_now += velocity_R_delta/200.0;
+    motor_control(velocity_L_now, 1);
+    motor_control(velocity_R_now, 2);
+  }
+  if(tick == 0) {
+    motor_control(velocity_L_set, 1);
+    motor_control(velocity_R_set, 2);
+  }
+}
 
 int main(void){
   initialize();
   while(1) {
     //blt.Motor_reset();
-    velocity_L_past = velocity_L;
-    velocity_R_past = velocity_R;
-    velocity_L = blt.Get_processed_motor_Value('L');
+    velocity_L_temp = velocity_L;
+    velocity_R_temp = velocity_R;
+    //velocity_L = blt.Get_processed_motor_Value('L');
     //pc_serial.printf("L : %f\n",velocity_L);
-    velocity_R = blt.Get_processed_motor_Value('R');
+    //velocity_R = blt.Get_processed_motor_Value('R');
     //pc_serial.printf("R : %f\n",velocity_R);
-    if((velocity_L != velocity_L_past) || (velocity_R != velocity_R_past))
-    {
+    if((velocity_L != velocity_L_temp) || (velocity_R != velocity_R_temp)){
+      velocity_L_set = velocity_L;
+      velocity_R_set = velocity_R;
+      velocity_L_delta = velocity_L_set - velocity_L_now;
+      velocity_R_delta = velocity_R_set - velocity_R_now;
       newcommand = true;
-
     }
     //motor_control(velocity_L,1);
     //motor_control(velocity_R,2);
     wait_ms(main_delay);
   }
-}
-
-void timer_int_handler(void)
-{
-  if(newcommand == true)
-  {
-    tick++;
-    motor_control(velocity_L_tim, 1);
-    motor_control(velocity_R_tim, 2);
-    if(tick == 200) newcommand = false;
-  }
-  else tick = 0;
 }
 
 void initialize(){
