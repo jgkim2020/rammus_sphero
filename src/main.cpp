@@ -16,9 +16,13 @@
 
 #include "mbed.h"
 #include "Serial_receive.h"
+#include "MadgwickAHRS.h"
+#include "MPU6050.h"
 
 Serial pc_serial(USBTX,USBRX);
 Serial_Receive blt(PC_12, PD_2);
+
+Ticker timer_int;
 
 PwmOut motor1_control_pin_forward(PB_10);
 PwmOut motor1_control_pin_backward(PB_4);
@@ -26,16 +30,64 @@ PwmOut motor1_control_pin_backward(PB_4);
 PwmOut motor2_control_pin_forward(PB_3);
 PwmOut motor2_control_pin_backward(PB_5);
 
+Madgwick filter;
+MPU6050 sensor;
 
 float velocity_L = 0.0;
 float velocity_R = 0.0;
+float velocity_L_past = 0.0;
+float velocity_R_past = 0.0;
+float velocity_L_tim = 0.0;
+float velocity_R_tim = 0.0;
+float velocity_L_past_tim = 0.0;
+float velocity_R_past_tim = 0.0;
 
 int main_delay = 100;
 
 float target_velocity = 0.0f;
 
+bool newcommand = false;
+int tick = 0;
+
+void initialize(void);
+void motor_control(float velocity, int motor_num);
+
+int main(void){
+  initialize();
+  while(1) {
+    //blt.Motor_reset();
+    velocity_L_past = velocity_L;
+    velocity_R_past = velocity_R;
+    velocity_L = blt.Get_processed_motor_Value('L');
+    //pc_serial.printf("L : %f\n",velocity_L);
+    velocity_R = blt.Get_processed_motor_Value('R');
+    //pc_serial.printf("R : %f\n",velocity_R);
+    if((velocity_L != velocity_L_past) || (velocity_R != velocity_R_past))
+    {
+      newcommand = true;
+
+    }
+    //motor_control(velocity_L,1);
+    //motor_control(velocity_R,2);
+    wait_ms(main_delay);
+  }
+}
+
+void timer_int_handler(void)
+{
+  if(newcommand == true)
+  {
+    tick++;
+    motor_control(velocity_L_tim, 1);
+    motor_control(velocity_R_tim, 2);
+    if(tick == 200) newcommand = false;
+  }
+  else tick = 0;
+}
+
 void initialize(){
   pc_serial.baud(115200);
+  timer_int.attach(&timer_int_handler, 0.02);
   blt.baud(115200);
   blt.bluetooth.attach(&blt, &Serial_Receive::Receive_data, Serial::RxIrq);
   motor1_control_pin_forward.period_us(400);
@@ -67,20 +119,6 @@ void motor_control(float velocity, int motor_num){
     }
   }
   return;
-}
-
-int main(void){
-  initialize();
-  while(1) {
-    //blt.Motor_reset();
-    velocity_L = blt.Get_processed_motor_Value('L');
-    pc_serial.printf("L : %f\n",velocity_L);
-    velocity_R = blt.Get_processed_motor_Value('R');
-    pc_serial.printf("R : %f\n",velocity_R);
-    motor_control(velocity_L,1);
-    motor_control(velocity_R,2);
-    wait_ms(main_delay);
-  }
 }
 
 //copy end
