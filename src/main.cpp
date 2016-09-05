@@ -58,8 +58,8 @@ void motor_control(float velocity, int motor_num);
 
 void timer_int_handler(void)
 {
-  pc_serial.printf("%d\n", debug_cnt);
-  debug_cnt++;
+  //pc_serial.printf("%d\n", debug_cnt);
+  //debug_cnt++;
   if(newcommand == true){
     tick = 200;
     newcommand = false;
@@ -83,16 +83,27 @@ int main(void){
     //blt.Motor_reset();
     velocity_L_temp = velocity_L;
     velocity_R_temp = velocity_R;
-    //velocity_L = blt.Get_processed_motor_Value('L');
+    velocity_L = blt.Get_processed_motor_Value('L');
     //pc_serial.printf("L : %f\n",velocity_L);
-    //velocity_R = blt.Get_processed_motor_Value('R');
+    velocity_R = blt.Get_processed_motor_Value('R');
     //pc_serial.printf("R : %f\n",velocity_R);
     if((velocity_L != velocity_L_temp) || (velocity_R != velocity_R_temp)){
-      velocity_L_set = velocity_L;
-      velocity_R_set = velocity_R;
-      velocity_L_delta = velocity_L_set - velocity_L_now;
-      velocity_R_delta = velocity_R_set - velocity_R_now;
-      newcommand = true;
+      if((velocity_L == 0) && (velocity_R == 0)){
+        velocity_L_set = 0.0;
+        velocity_R_set = 0.0;
+        velocity_L_now = velocity_L_set;
+        velocity_R_now = velocity_L_set;
+        motor_control(velocity_L_now, 1);
+        motor_control(velocity_R_now, 2);
+        newcommand = false;
+      }
+      else{
+        velocity_L_set = velocity_L;
+        velocity_R_set = velocity_R;
+        velocity_L_delta = velocity_L_set - velocity_L_now;
+        velocity_R_delta = velocity_R_set - velocity_R_now;
+        newcommand = true;
+      }
     }
     //motor_control(velocity_L,1);
     //motor_control(velocity_R,2);
@@ -102,7 +113,7 @@ int main(void){
 
 void initialize(){
   pc_serial.baud(115200);
-  timer_int.attach(&timer_int_handler, 0.02);
+  timer_int.attach(&timer_int_handler, 0.01);
   blt.baud(115200);
   blt.bluetooth.attach(&blt, &Serial_Receive::Receive_data, Serial::RxIrq);
   motor1_control_pin_forward.period_us(400);
