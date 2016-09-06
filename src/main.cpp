@@ -93,9 +93,8 @@ int main(void){
         velocity_R_set = 0.0;
         velocity_L_now = velocity_L_set;
         velocity_R_now = velocity_L_set;
-        motor_control(velocity_L_now, 1);
-        motor_control(velocity_R_now, 2);
         newcommand = false;
+        tick = 0;
       }
       else{
         velocity_L_set = velocity_L;
@@ -107,7 +106,7 @@ int main(void){
     }
     //motor_control(velocity_L,1);
     //motor_control(velocity_R,2);
-    wait_ms(main_delay);
+    //wait_ms(main_delay);
   }
 }
 
