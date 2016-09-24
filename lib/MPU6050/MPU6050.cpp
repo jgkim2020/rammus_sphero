@@ -24,7 +24,8 @@
 #define GYRO_ZOUT_H       0x47
 #define GYRO_ZOUT_L       0x48
 
-MPU6050::MPU6050() {
+MPU6050::MPU6050()
+{
 	data_write[0] = 0x00; data_write[1] = 0x00;
   acc_read[0] = 0x00; acc_read[1] = 0x00; acc_read[2] = 0x00; acc_read[3] = 0x00; acc_read[4] = 0x00; acc_read[5] = 0x00;
   temp_read[0] = 0x00; temp_read[1] = 0x00;
@@ -33,11 +34,15 @@ MPU6050::MPU6050() {
   temp_rawval = 0;
   gyro_rawval[0] = 0; gyro_rawval[1] = 0; gyro_rawval[2] = 0;
   acc_val[0] = 0.0; acc_val[1] = 0.0; acc_val[2] = 0.0;
+	acc_cval[0] = 0.0; acc_cval[1] = 0.0; acc_cval[2] = 0.0;
   temp_val = 0.0;
   gyro_val[0] = 0.0; gyro_val[1] = 0.0; gyro_val[2] = 0.0;
+	gyro_cval[0] = -3.0; gyro_cval[1] = -1.0; gyro_cval[2] = 1.0;
+	return;
 }
 
-void MPU6050::begin(void) {
+int MPU6050::begin()
+{
 	I2C i2c(I2C_SDA, I2C_SCL); // PB_9, PB_8
   int error = 0;
   data_write[0] = MPU6050_PWR;
@@ -47,11 +52,12 @@ void MPU6050::begin(void) {
   error += i2c.write(MPU6050_ADDR, data_write, 2, false)*10; // Acclerometer 16384 LSB/g
   data_write[0] = MPU6050_GYRO_CONF;
   error += i2c.write(MPU6050_ADDR, data_write, 2, false)*100; // Gyroscope 131 LSB/dps
-  error_msg(error, "MPU setup error");
+	return error;
 }
 
-void MPU6050::read(void) {
-	I2C i2c(I2C_SDA, I2C_SCL); // PB_9, PB_8
+int MPU6050::read()
+{
+	I2C i2c(I2C_SDA, I2C_SCL); // PB_9, PB_8s
   int error = 0;
   // Read accelerometer, gyroscope
   // i2c.read(int address, char *data, int length{#, bool repeated#})
@@ -77,20 +83,42 @@ void MPU6050::read(void) {
   for(int i = 0; i < 3; i++) acc_val[i] = acc_rawval[i]/16384.0*9.8; // unit: m/s/s
   temp_val = temp_rawval/340.0 + 36.53; // unit: degrees Celsius
   for(int i = 0; i < 3; i++) gyro_val[i] = gyro_rawval[i]/131.0; // unit: rad/s
-  gyro_val[0] += 0.035;
-  gyro_val[1] += 0.030;
-  gyro_val[2] += 0.032;
-  error_msg(error, "MPU read error");
+  gyro_val[0] -= gyro_cval[0];
+  gyro_val[1] -= gyro_cval[1];
+  gyro_val[2] -= gyro_cval[2];
+	return error;
 }
 
-void MPU6050::error_msg(int error, const char *error_msg) {
-	DigitalOut myled(LED1);
-	Serial pc(SERIAL_TX, SERIAL_RX); // PA_2, PA_3
-  if(error != 0) {
-    while(1) {
-      myled = !myled;
-      pc.printf("%s: %d\n", error_msg, error);
-      wait_ms(2500);
-    }
-  }
+int MPU6050::calibrate(char option)
+{
+	if(option == 'g')
+	{
+		int error = 0;
+		gyro_cval[0] = 0;
+		gyro_cval[1] = 0;
+		gyro_cval[2] = 0;
+		for(int i = 0; i < 250; i++)
+		{
+			if(read() != 0) error++;
+			else
+			{
+			gyro_cval[0] += gyro_val[0];
+			gyro_cval[1] += gyro_val[1];
+			gyro_cval[2] += gyro_val[2];
+			}
+			wait_ms(10);
+		}
+		gyro_cval[0] *= 1.0/(250 - error);
+		gyro_cval[1] *= 1.0/(250 - error);
+		gyro_cval[2] *= 1.0/(250 - error);
+		return error;
+	}
+	else if(option == 'a')
+	{
+		return 0;
+	}
+	else
+	{
+		return 0;
+	}
 }

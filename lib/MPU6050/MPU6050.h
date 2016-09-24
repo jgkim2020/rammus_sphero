@@ -15,14 +15,16 @@ private:
   int16_t temp_rawval;
   int16_t gyro_rawval[3];
   float acc_val[3];
+  float acc_cval[3];
   float temp_val;
   float gyro_val[3];
-  void error_msg(int error, const char *error_msg);
+  float gyro_cval[3];
 
 public:
-  MPU6050(void);
-  void begin();
-  void read();
+  MPU6050();
+  int begin();
+  int read();
+  int calibrate(char option);
   float gx() {return gyro_val[0];}
   float gy() {return gyro_val[1];}
   float gz() {return gyro_val[2];}
