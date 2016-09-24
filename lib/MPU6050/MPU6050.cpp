@@ -52,7 +52,6 @@ int MPU6050::begin()
   error += i2c.write(MPU6050_ADDR, data_write, 2, false)*10; // Acclerometer 16384 LSB/g
   data_write[0] = MPU6050_GYRO_CONF;
   error += i2c.write(MPU6050_ADDR, data_write, 2, false)*100; // Gyroscope 131 LSB/dps
-  //error_msg(error, "MPU setup error");
 	return error;
 }
 
@@ -87,7 +86,6 @@ int MPU6050::read()
   gyro_val[0] -= gyro_cval[0];
   gyro_val[1] -= gyro_cval[1];
   gyro_val[2] -= gyro_cval[2];
-  //error_msg(error, "MPU read error");
 	return error;
 }
 
@@ -101,15 +99,18 @@ int MPU6050::calibrate(char option)
 		gyro_cval[2] = 0;
 		for(int i = 0; i < 250; i++)
 		{
-			if(read() != 0) error = 1;
+			if(read() != 0) error++;
+			else
+			{
 			gyro_cval[0] += gyro_val[0];
 			gyro_cval[1] += gyro_val[1];
 			gyro_cval[2] += gyro_val[2];
+			}
 			wait_ms(10);
 		}
-		gyro_cval[0] *= 0.004;
-		gyro_cval[1] *= 0.004;
-		gyro_cval[2] *= 0.004;
+		gyro_cval[0] *= 1.0/(250 - error);
+		gyro_cval[1] *= 1.0/(250 - error);
+		gyro_cval[2] *= 1.0/(250 - error);
 		return error;
 	}
 	else if(option == 'a')

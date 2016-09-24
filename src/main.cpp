@@ -38,8 +38,13 @@ MPU6050 sensor;
 float Roll;
 float Pitch;
 float Yaw;
-float setYaw = 0;
-bool command = false;
+
+float Yaw_set;
+float ctrl_px_P = 1;
+float ctrl_py_P = 0.1;
+float ctrl_r_P = 1;
+float ctrl_fb_P = 1;
+float ctrl_fb_D = 0.1;
 
 void initialize(void);
 void motor_control(float velocity, int motor_num);
@@ -49,18 +54,19 @@ void sensor_tick_handler(void)
   sensor.read();
   filter.updateIMU(sensor.gx(), sensor.gy(), sensor.gz(), sensor.ax(), sensor.ay(), sensor.az());
   Roll = filter.getRoll();
-  Pitch = filter.getPitch();
-  Yaw = filter.getYaw();
+  Pitch = -filter.getPitch();
+  Yaw = 360 - filter.getYaw();
   return;
 }
 
 void controller_tick_handler(void)
 {
-  if(command == false) return;
-  else
-  {
-    return;
-  }
+  // motor control input (L, R)
+  // all control coefficients are
+  // case 1 (parking): px(-ax, -ax) + py(ay, -ay)
+  // case 2 (rotate): r(yaw_set - yaw, yaw - yaw_set)
+  // case 3 (forward/backward): (spd, spd) + fb_p(ay ,-ay) + fb_d(ay', -ay')
+  return;
 }
 
 int main(void)
