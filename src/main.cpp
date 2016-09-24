@@ -19,16 +19,16 @@
 #include "MadgwickAHRS.h"
 #include "MPU6050.h"
 
-Serial pc_serial(USBTX,USBRX);
 Serial pc(SERIAL_TX, SERIAL_RX); // PA_2, PA_3
 Serial_Receive blt(PC_12, PD_2);
+
+DigitalOut myled(LED1);
 
 Ticker sensor_tick;
 Ticker controller_tick;
 
 PwmOut motor1_control_pin_forward(PB_10);
 PwmOut motor1_control_pin_backward(PB_4);
-
 PwmOut motor2_control_pin_forward(PB_3);
 PwmOut motor2_control_pin_backward(PB_5);
 
@@ -79,11 +79,11 @@ void initialize()
   motor1_control_pin_backward.period_us(400);
   motor2_control_pin_forward.period_us(400);
   motor2_control_pin_backward.period_us(400);
-  pc_serial.baud(115200);
+  pc.baud(115200);
   blt.baud(115200);
   blt.bluetooth.attach(&blt, &Serial_Receive::Receive_data, Serial::RxIrq);
   sensor.begin();
-  //sensor.calibrate();
+  sensor.calibrate('g');
   filter.begin(100);
   sensor_tick.attach(&sensor_tick_handler, 0.01);
   controller_tick.attach(&controller_tick_handler, 0.05);
